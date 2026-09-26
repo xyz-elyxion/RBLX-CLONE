@@ -64,11 +64,20 @@ FetchContent_Declare(
     GIT_TAG v0.9.0
 )
 FetchContent_MakeAvailable(rp3d)
-if(TARGET reactphysics3d AND NOT MSVC)
-    target_compile_options(reactphysics3d PUBLIC
-        $<$<COMPILE_LANGUAGE:CXX>:-include>
-        $<$<COMPILE_LANGUAGE:CXX>:cstdint>
-    )
+if(TARGET reactphysics3d)
+    if(MSVC)
+        # rp3d 0.9.0 uses cstdint/std::chrono without including them; newer MSVC
+        # headers no longer provide them transitively, so force-include both.
+        target_compile_options(reactphysics3d PUBLIC
+            $<$<COMPILE_LANGUAGE:CXX>:/FIcstdint>
+            $<$<COMPILE_LANGUAGE:CXX>:/FIchrono>
+        )
+    else()
+        target_compile_options(reactphysics3d PUBLIC
+            $<$<COMPILE_LANGUAGE:CXX>:-include>
+            $<$<COMPILE_LANGUAGE:CXX>:cstdint>
+        )
+    endif()
 endif()
 
 FetchContent_Declare(

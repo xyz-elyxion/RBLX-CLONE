@@ -14,8 +14,26 @@
         "RBLX_BUILD_TESTS": "ON"
       }
     }
+    {
+      "name": "windows-insiders",
+      "displayName": "Windows Debug (Visual Studio 18 Insiders)",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/build/windows-insiders",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "RBLX_BUILD_CLIENT": "ON",
+        "RBLX_BUILD_SERVER": "ON",
+        "RBLX_BUILD_STUDIO": "ON",
+        "RBLX_BUILD_TESTS": "ON"
+      }
+    }
   ],
   "buildPresets": [
+    {
+      "name": "windows-insiders",
+      "configurePreset": "windows-insiders",
+      "configuration": "Debug"
+    },
     {
       "name": "windows-debug",
       "configurePreset": "windows-debug",
@@ -23,6 +41,11 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "windows-insiders",
+      "configurePreset": "windows-insiders",
+      "configuration": "Debug"
+    },
     {
       "name": "windows-debug",
       "configurePreset": "windows-debug",
