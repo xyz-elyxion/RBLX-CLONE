@@ -271,5 +271,6 @@ if(RBLX_BUILD_WEBSERVER)
     else()
         target_compile_options(WebServerTests PRIVATE -w)
     endif()
-    add_test(NAME WebServerTests COMMAND WebServerTests)
+    add_test(NAME WebServerTests COMMAND WebServerTests
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
