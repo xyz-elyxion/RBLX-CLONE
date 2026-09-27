@@ -92,3 +92,8 @@ imgui.ini
 # face.png
 # face_hex.txt
 
+
+# Web server runtime data
+web/test-game-worlds/
+web/users.db
+web/users.db-journal

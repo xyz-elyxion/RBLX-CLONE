@@ -4,10 +4,10 @@ Limey is an early prototype of a Roblox-style client, game server, Studio editor
 
 ## Current Status
 
-- Client, Server, and Studio are C++17 targets.
-- The Client and Server currently require Windows because they use WinSock and WinHTTP.
+- Client, Server, Studio, and the web backend are C++17 targets.
+- The Client and Server currently require Windows because they use WinSock and WinHTTP. The web backend (WebServer) is fully cross-platform.
 - Studio uses GLFW/OpenGL/ImGui/ImGuizmo and has a basic world editing path.
-- The web backend is a Node.js/Express service with SQLite, bcrypt password hashing, JWT authentication, avatar storage, public game catalog pages, and local game-server launch orchestration.
+- The web backend is a native C++ service (no Node.js) with SQLite, bcrypt password hashing, JWT authentication, avatar storage, public game catalog pages, and local game-server launch orchestration. It serves the exact same HTTP API as the original Node prototype, so existing clients and saved databases keep working.
 - Networking is still a compact binary protocol. It now has shared framing, payload limits, partial send handling, and receive buffering, but it is still a prototype protocol.
 
 ## Repository Layout
@@ -15,10 +15,11 @@ Limey is an early prototype of a Roblox-style client, game server, Studio editor
 - `CMakeLists.txt` - C++ build configuration.
 - `CMakePresets.json` - Visual Studio debug preset for Windows.
 - `include/` - C++ headers.
-- `src/` - C++ Client, Server, Studio, rendering, physics, auth, and world loading code.
+- `src/` - C++ Client, Server, Studio, web backend, rendering, physics, auth, and world loading code.
 - `shaders/` - OpenGL shader files used by Client and Studio.
-- `tests/` - C++ protocol tests.
-- `web/` - Express backend and public HTML pages.
+- `tests/` - C++ protocol and web server tests.
+- `vendor/` - Vendored third-party sources (SQLite, nlohmann/json, crypt_blowfish).
+- `web/` - Public HTML/JS/CSS pages served by the native web server.
 - `ServerWorld.world` - Default world file.
 - `GameRelease/` - Existing release asset folders. Do not commit generated binaries here.
 
@@ -26,18 +27,14 @@ Limey is an early prototype of a Roblox-style client, game server, Studio editor
 
 ### C++ Targets
 
-Windows is currently required for Client and Server.
+Windows is currently required for Client and Server. The web backend builds anywhere.
 
-- Visual Studio 2022 with "Desktop development with C++".
+- Visual Studio 2026/2022 with "Desktop development with C++" (or a MinGW/Ninja toolchain).
 - CMake 3.21 or newer if using `CMakePresets.json`; CMake 3.14 or newer for manual configure.
-- OpenGL-capable GPU/drivers.
+- OpenGL-capable GPU/drivers for running Studio/Client.
+- Linux: `libgl1-mesa-dev libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev` for GLFW.
 
-### Web Backend
-
-- Node.js 20 or newer. The project was tested with Node.js 24.
-- npm.
-
-PowerShell may block `npm.ps1` on some machines. Use `npm.cmd` if that happens.
+There is no Node.js, npm, or any other runtime dependency: SQLite, nlohmann/json, and bcrypt are vendored under `vendor/` and built from source.
 
 ## Build C++
 
@@ -55,6 +52,14 @@ Manual configure also works:
 cmake -S . -B build/windows-debug -G "Visual Studio 17 2022" -DRBLX_BUILD_TESTS=ON
 cmake --build build/windows-debug --config Debug
 ctest --test-dir build/windows-debug -C Debug
+```
+
+The web server and its tests build on any platform (no OpenGL needed):
+
+```powershell
+cmake -S . -B build/web -G Ninja -DRBLX_BUILD_CLIENT=OFF -DRBLX_BUILD_SERVER=OFF -DRBLX_BUILD_STUDIO=OFF
+cmake --build build/web
+ctest --test-dir build/web --output-on-failure
 ```
 
 The project has also been verified with a portable MinGW/Ninja toolchain:
@@ -89,16 +94,15 @@ Start the web backend before using authenticated Client login.
 
 ## Web Backend Setup
 
+Build the `WebServer` target (see "Build C++" above), then run it:
+
 ```powershell
-cd web
-npm.cmd install
-npm.cmd test
-npm.cmd start
+.\build\windows-debug\Debug\WebServer.exe
 ```
 
-The backend listens on `http://localhost:3000` by default.
+The backend listens on `http://localhost:3000` by default and serves the site from `web/public`.
 
-Copy `web/.env.example` to `web/.env` for local overrides. Do not commit `.env`.
+Configure it with environment variables (or copy `web/.env.example` and load it yourself). Do not commit `.env`.
 
 Environment variables:
 
@@ -106,11 +110,15 @@ Environment variables:
 - `PORT` - HTTP port, default `3000`.
 - `DATABASE_PATH` - SQLite database path, default `web/users.db`.
 - `JWT_SECRET` - required and must be strong in production.
-- `JWT_EXPIRES_IN` - JWT lifetime, default `7d`.
+- `JWT_EXPIRES_IN` - JWT lifetime, e.g. `7d`, `12h`, `30m`.
 - `CORS_ORIGIN` - comma-separated allowed origins. Development defaults to localhost origins.
-- `JSON_BODY_LIMIT` - Express JSON body limit, default `2mb`.
-- `AUTH_RATE_LIMIT_WINDOW_MS` - auth rate limit window.
-- `AUTH_RATE_LIMIT_MAX` - auth requests allowed per window.
+- `BCRYPT_ROUNDS` - password hashing cost, default 10 (4 in tests).
+- `AUTH_RATE_LIMIT_WINDOW_MS` / `AUTH_RATE_LIMIT_MAX` - auth rate limiting settings.
+- `JSON_BODY_LIMIT` - request size guard.
+- `GAME_WORLDS_DIR` - directory for published world files.
+- `GAME_SERVER_BASE_PORT` - first port to try for game instances, default `7777`.
+- `SERVER_EXECUTABLE_PATH` / `CLIENT_EXECUTABLE_PATH` - local executables the web server launches.
+- `PUBLIC_BASE_URL` - URL passed to native server/client for web auth, default `http://localhost:3000`.
 
 Production startup fails if `JWT_SECRET` is missing, too short, or left as an unsafe placeholder.
 
@@ -179,17 +187,16 @@ Scale operations assign the decomposed absolute scale from ImGuizmo and clamp it
 ## Known Limitations
 
 - This is a prototype and should be treated as local-only.
-- Client and Server are Windows-only until socket and HTTP abstractions are made portable.
+- Client and Server are Windows-only until socket and HTTP abstractions are made portable. The web backend is cross-platform.
 - The binary protocol still depends on matching C++ struct layouts across the same build family.
 - The web service uses SQLite and local JWT storage in the browser; it is not hardened for internet deployment.
 - Client UI/networking code remains large and should be split further.
-- C++ build/test is verified with CMake, Ninja, and MinGW GCC. Client, Server, and Studio runtime behavior still need manual testing with a graphics-capable Windows desktop.
+- C++ build/test is verified with CMake, Ninja, and MinGW GCC on Windows plus GCC on Linux. Client, Server, and Studio runtime behavior still need manual testing with a graphics-capable Windows desktop.
 
 ## Troubleshooting
 
 - `cmake is not recognized`: install CMake or add it to PATH.
 - `cl not found`: run from a Visual Studio Developer shell or install the C++ workload.
-- `npm.ps1 cannot be loaded`: use `npm.cmd` from PowerShell.
 - `JWT_SECRET must be set`: set a strong secret in production or use development mode locally.
-- Client login fails: start the web backend first and confirm `http://localhost:3000` is reachable.
+- Client login fails: start the C++ web server first and confirm `http://localhost:3000` is reachable.
 - Client cannot connect: start `Server.exe`, allow firewall access, and connect to `127.0.0.1` for local testing.

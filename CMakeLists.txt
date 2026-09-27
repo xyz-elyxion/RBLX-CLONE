@@ -9,6 +9,7 @@ option(RBLX_BUILD_STUDIO "Build the Studio editor target" ON)
 option(RBLX_BUILD_CLIENT "Build the game client target" ON)
 option(RBLX_BUILD_SERVER "Build the game server target" ON)
 option(RBLX_BUILD_TESTS "Build C++ test targets" ON)
+option(RBLX_BUILD_WEBSERVER "Build the native C++ web server" ON)
 option(RBLX_ENABLE_WARNINGS "Enable stricter compiler warnings" ON)
 
 add_compile_definitions(NOMINMAX GLM_ENABLE_EXPERIMENTAL)
@@ -184,4 +185,91 @@ if(RBLX_BUILD_TESTS)
     target_include_directories(NetworkProtocolTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(NetworkProtocolTests PRIVATE glm)
     add_test(NAME NetworkProtocolTests COMMAND NetworkProtocolTests)
+endif()
+
+if(RBLX_BUILD_WEBSERVER)
+    # SQLite (amalgamation) for the web backend database.
+    add_library(sqlite3_static STATIC vendor/sqlite/sqlite3.c)
+    target_include_directories(sqlite3_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/sqlite)
+    target_compile_definitions(sqlite3_static PRIVATE
+        SQLITE_THREADSAFE=1
+        SQLITE_ENABLE_MATH_FUNCTIONS
+        $<$<PLATFORM_ID:Windows>:SQLITE_OS_WIN=1>
+    )
+    if(MSVC)
+        # The amalgamation is third-party code; do not enforce /W4 on it.
+        target_compile_options(sqlite3_static PRIVATE /W0)
+    else()
+        target_compile_options(sqlite3_static PRIVATE -w)
+    endif()
+
+    # Openwall crypt_blowfish (public domain) for bcrypt password hashing.
+    add_library(bcrypt_static STATIC vendor/bcrypt/crypt_blowfish.c vendor/bcrypt/crypt_gensalt.c)
+    target_include_directories(bcrypt_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bcrypt)
+    if(MSVC)
+        target_compile_options(bcrypt_static PRIVATE /W0)
+    else()
+        target_compile_options(bcrypt_static PRIVATE -w)
+    endif()
+
+    add_executable(WebServer
+        src/web/WebServerMain.cpp
+        src/web/WebApp.cpp
+        src/web/WebAppApi.cpp
+        src/web/WebAppSocial.cpp
+        src/web/WebAppGames.cpp
+        src/web/WebAppWorld.cpp
+        src/web/WebAppInstances.cpp
+        src/web/WebCrypto.cpp
+        src/web/HttpServer.cpp
+    )
+    target_include_directories(WebServer PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/web
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/sqlite
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bcrypt
+    )
+    target_link_libraries(WebServer PRIVATE sqlite3_static bcrypt_static)
+    if(WIN32)
+        target_link_libraries(WebServer PRIVATE ws2_32)
+    else()
+        target_link_libraries(WebServer PRIVATE pthread)
+    endif()
+    if(RBLX_ENABLE_WARNINGS)
+        if(MSVC)
+            target_compile_options(WebServer PRIVATE /W4 /permissive-)
+        else()
+            target_compile_options(WebServer PRIVATE -Wall -Wextra -Wpedantic)
+        endif()
+    endif()
+
+    add_executable(WebServerTests tests/web_server_tests.cpp)
+    target_include_directories(WebServerTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/web
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/sqlite
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bcrypt
+    )
+    target_sources(WebServerTests PRIVATE
+        src/web/WebCrypto.cpp
+        src/web/HttpServer.cpp
+        src/web/WebApp.cpp
+        src/web/WebAppApi.cpp
+        src/web/WebAppSocial.cpp
+        src/web/WebAppGames.cpp
+        src/web/WebAppWorld.cpp
+        src/web/WebAppInstances.cpp
+    )
+    target_link_libraries(WebServerTests PRIVATE sqlite3_static bcrypt_static)
+    if(WIN32)
+        target_link_libraries(WebServerTests PRIVATE ws2_32)
+    else()
+        target_link_libraries(WebServerTests PRIVATE pthread)
+    endif()
+    if(MSVC)
+        target_compile_options(WebServerTests PRIVATE /W0)
+    else()
+        target_compile_options(WebServerTests PRIVATE -w)
+    endif()
+    add_test(NAME WebServerTests COMMAND WebServerTests)
 endif()

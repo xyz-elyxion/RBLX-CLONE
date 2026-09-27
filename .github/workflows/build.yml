@@ -65,6 +65,7 @@ jobs:
           Copy-Item build/windows-insiders/Debug/Studio.exe dist/
           Copy-Item build/windows-insiders/Debug/Client.exe dist/
           Copy-Item build/windows-insiders/Debug/Server.exe dist/
+          Copy-Item build/windows-insiders/Debug/WebServer.exe dist/
           Copy-Item shaders/*.glsl dist/shaders/
           Copy-Item face*.png dist/
           Copy-Item ServerWorld.world dist/
@@ -78,24 +79,29 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  web-tests:
-    name: Web backend tests
+  web-server-tests:
+    name: C++ web server tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build web server and tests
+        run: |
+          mkdir -p build/web-ci
+          gcc -std=c11 -O2 -c vendor/sqlite/sqlite3.c -Ivendor/sqlite -DSQLITE_THREADSAFE=1 -o build/web-ci/sqlite3.o
+          gcc -std=c99 -c vendor/bcrypt/crypt_blowfish.c -Ivendor/bcrypt -o build/web-ci/crypt_blowfish.o
+          gcc -std=c99 -c vendor/bcrypt/crypt_gensalt.c -Ivendor/bcrypt -o build/web-ci/crypt_gensalt.o
+          for f in WebCrypto HttpServer WebApp WebAppApi WebAppSocial WebAppGames WebAppWorld WebAppInstances; do
+            g++ -std=c++17 -O2 -c src/web/$f.cpp -Isrc/web -Ivendor/json -Ivendor/sqlite -Ivendor/bcrypt -o build/web-ci/$f.o
+          done
+          g++ -std=c++17 -O2 -c tests/web_server_tests.cpp -Isrc/web -Ivendor/json -Ivendor/sqlite -Ivendor/bcrypt -o build/web-ci/tests.o
+          g++ -o build/web-ci/web_server_tests build/web-ci/*.o -lpthread
 
       - name: Test
-        run: npm test
+        run: ./build/web-ci/web_server_tests

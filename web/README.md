@@ -1,32 +1,35 @@
-# Limey Web Backend
+# Limey Web Backend (native C++)
 
-This is the local Express backend for account signup/login, token verification, and avatar storage.
+This is the native C++ web backend for account signup/login, token verification, avatar storage, and the public game catalog. It replaces the previous Node.js/Express service with the same HTTP API, the same SQLite database (`users.db`), and the same environment variables — no Node.js required.
 
-## Setup
+## Build
 
 ```powershell
-npm.cmd install
-npm.cmd test
-npm.cmd start
+cmake -S . -B build/web -DRBLX_BUILD_CLIENT=OFF -DRBLX_BUILD_SERVER=OFF -DRBLX_BUILD_STUDIO=OFF
+cmake --build build/web --target WebServer
 ```
 
-Use `npm.cmd` on Windows PowerShell if script execution policy blocks `npm.ps1`.
+## Run
 
-Copy `.env.example` to `.env` for local overrides. Do not commit `.env`.
+```powershell
+.\build\web\WebServer.exe --port 3000
+```
+
+It serves the site from `public/` and the API under `/api/`. Copy `.env.example` to `.env` for local overrides. Do not commit `.env`.
 
 ## Environment
 
 - `NODE_ENV` - `development`, `test`, or `production`.
 - `PORT` - server port, default `3000`.
-- `DATABASE_PATH` - SQLite database path, default `users.db`.
+- `DATABASE_PATH` - SQLite database path, default `web/users.db`.
 - `JWT_SECRET` - required and strong in production.
-- `JWT_EXPIRES_IN` - token lifetime, default `7d`.
+- `JWT_EXPIRES_IN` - token lifetime, e.g. `7d`, `12h`, `30m`.
 - `CORS_ORIGIN` - comma-separated allowed origins.
-- `JSON_BODY_LIMIT` - JSON body size limit.
+- `BCRYPT_ROUNDS` - password hashing cost, default 10 (4 in test mode).
 - `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX` - auth endpoint rate limit.
 - `GAME_WORLDS_DIR` - directory for published `.world` files.
 - `GAME_SERVER_HOST` and `GAME_SERVER_BASE_PORT` - local host/port range for spawned game instances.
-- `GAME_INSTANCE_EMPTY_GRACE_MS` - how long an empty spawned game instance stays alive before the website stops it, default `30000`.
+- `GAME_INSTANCE_EMPTY_GRACE_MS` - how long an empty spawned game instance stays alive before the web server stops it, default `30000`.
 - `SERVER_EXECUTABLE_PATH` - `Server.exe` path used when a game page starts an instance.
 - `CLIENT_EXECUTABLE_PATH` - `Client.exe` path used when the Play button launches the native player.
 - `PUBLIC_BASE_URL` - site URL passed to native server/client for web auth.
@@ -42,9 +45,9 @@ Copy `.env.example` to `.env` for local overrides. Do not commit `.env`.
 - `POST /api/me/playtime` with `Authorization: Bearer <token>` and `{ "seconds": 120 }`.
 - `GET /api/users/search?q=Player` with `Authorization: Bearer <token>`.
 - `GET /api/users/:id` with `Authorization: Bearer <token>`.
-- `POST /api/friends/request` with `Authorization: Bearer <token>` and `{ "userId": 2 }`.
-- `POST /api/friends/respond` with `Authorization: Bearer <token>` and `{ "userId": 2, "action": "accept" }`.
-- `POST /api/friends/remove` with `Authorization: Bearer <token>` and `{ "userId": 2 }`.
+- `POST /api/friends/request` with `Authorization: Bearer <token>`.
+- `POST /api/friends/respond` with `Authorization: Bearer <token>`.
+- `POST /api/friends/remove` with `Authorization: Bearer <token>`.
 - `GET /api/games` lists public games.
 - `GET /api/games/:id` returns game details, world stats, and active local instances.
 - `GET /api/games/mine` with `Authorization: Bearer <token>` lists your games.
@@ -60,3 +63,13 @@ Valid avatar `faceId` values are `classic`, `happy`, `surprised`, `smirk`, and `
 The Windows game server uses `/api/me/playtime` to add authenticated session time during play and on disconnect. It also sends instance heartbeats so the website can stop empty game processes and start them again the next time someone presses Play.
 
 The games page lives at `/games`, game detail pages live at `/games/:id`, and the browser publishing form lives at `/create`.
+
+## Dependencies
+
+All third-party code is vendored under `vendor/` and compiled from source:
+
+- `vendor/sqlite` - SQLite amalgamation (public domain).
+- `vendor/json` - nlohmann/json (MIT).
+- `vendor/bcrypt` - Openwall crypt_blowfish (public domain), used for bcrypt password hashes compatible with the original Node `bcrypt` package.
+
+There is no package manager, runtime, or interpreter involved.
