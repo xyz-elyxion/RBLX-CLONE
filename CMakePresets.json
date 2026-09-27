@@ -13,7 +13,7 @@
         "RBLX_BUILD_STUDIO": "ON",
         "RBLX_BUILD_TESTS": "ON"
       }
-    }
+    },
     {
       "name": "windows-insiders",
       "displayName": "Windows Debug (Visual Studio 18 Insiders)",

@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpp:
+    name: C++ (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies (GL, X11, Wayland for GLFW)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            wayland-protocols \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Configure (Windows preset)
+        if: runner.os == 'Windows'
+        run: cmake --preset windows-debug
+
+      - name: Configure Linux (Studio + tests; Client/Server are Windows-only)
+        if: runner.os == 'Linux'
+        run: >
+          cmake -S . -B build/linux -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DRBLX_BUILD_CLIENT=OFF
+          -DRBLX_BUILD_SERVER=OFF
+          -DRBLX_BUILD_STUDIO=ON
+          -DRBLX_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build ${{ runner.os == 'Windows' && 'build/windows-debug' || 'build/linux' }} --parallel
+
+      - name: Test
+        run: ctest --test-dir ${{ runner.os == 'Windows' && 'build/windows-debug' || 'build/linux' }} --output-on-failure -C Debug
+
+  web-tests:
+    name: Web backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
