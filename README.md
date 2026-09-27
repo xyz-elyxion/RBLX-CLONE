@@ -54,6 +54,22 @@ cmake --build build/windows-debug --config Debug
 ctest --test-dir build/windows-debug -C Debug
 ```
 
+### Docker (web server)
+
+The web backend ships as a Docker image that compiles the server and runs its test suite during the image build, then serves the site from a minimal Debian runtime:
+
+```bash
+docker build -t limey-webserver .
+docker run --rm -p 3000:3000 \
+  -e JWT_SECRET="replace-with-a-long-random-secret" \
+  -v limey-data:/data \
+  limey-webserver
+```
+
+The server listens on `0.0.0.0:3000` (override with `PORT`). Accounts, published games, and spawned world files live under the `/data` volume (`DATABASE_PATH=/data/users.db`, `GAME_WORLDS_DIR=/data/game-worlds`), so they survive container replacement. `NODE_ENV=production` is set in the image and the server refuses to start without a `JWT_SECRET`.
+
+### Build the web server directly (no Docker)
+
 The web server and its tests build on any platform (no OpenGL needed):
 
 ```powershell

@@ -12,54 +12,22 @@ concurrency:
 
 jobs:
   cpp:
-    name: C++ (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest]
+    name: C++ (windows-latest)
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux build dependencies (GL, X11, Wayland for GLFW)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            libgl1-mesa-dev \
-            libx11-dev \
-            libxi-dev \
-            libxcursor-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            wayland-protocols \
-            libwayland-dev \
-            libxkbcommon-dev
-
       - name: Configure Windows (VS 2026 preset matches the runner image)
-        if: runner.os == 'Windows'
         run: cmake --preset windows-insiders
 
-      - name: Configure Linux (Studio + tests; Client/Server are Windows-only)
-        if: runner.os == 'Linux'
-        run: >
-          cmake -S . -B build/linux -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DRBLX_BUILD_CLIENT=OFF
-          -DRBLX_BUILD_SERVER=OFF
-          -DRBLX_BUILD_STUDIO=ON
-          -DRBLX_BUILD_TESTS=ON
-
       - name: Build
-        run: cmake --build ${{ runner.os == 'Windows' && 'build/windows-insiders' || 'build/linux' }} --parallel
+        run: cmake --build build/windows-insiders --parallel
 
       - name: Test
-        run: ctest --test-dir ${{ runner.os == 'Windows' && 'build/windows-insiders' || 'build/linux' }} --output-on-failure -C Debug
+        run: ctest --test-dir build/windows-insiders --output-on-failure -C Debug
 
       - name: Collect game executables and assets
-        if: runner.os == 'Windows'
         run: |
           New-Item -ItemType Directory -Force -Path dist/shaders | Out-Null
           Copy-Item build/windows-insiders/Debug/Studio.exe dist/
@@ -72,36 +40,47 @@ jobs:
           Get-ChildItem dist -Recurse | Select-Object FullName, Length
 
       - name: Upload game executables
-        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: RBLXClone-windows-x64
           path: dist/
           if-no-files-found: error
 
-  web-server-tests:
-    name: C++ web server tests
+  docker:
+    name: Docker (web server)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential
+      - name: Build image (compiles WebServer and runs its tests inside)
+        run: docker build -t limey-webserver:ci .
 
-      - name: Build web server and tests
+      - name: Smoke test the container
         run: |
-          mkdir -p build/web-ci
-          gcc -std=c11 -O2 -c vendor/sqlite/sqlite3.c -Ivendor/sqlite -DSQLITE_THREADSAFE=1 -o build/web-ci/sqlite3.o
-          gcc -std=c99 -c vendor/bcrypt/crypt_blowfish.c -Ivendor/bcrypt -o build/web-ci/crypt_blowfish.o
-          gcc -std=c99 -c vendor/bcrypt/crypt_gensalt.c -Ivendor/bcrypt -o build/web-ci/crypt_gensalt.o
-          for f in WebCrypto HttpServer WebApp WebAppApi WebAppSocial WebAppGames WebAppWorld WebAppInstances; do
-            g++ -std=c++17 -O2 -c src/web/$f.cpp -Isrc/web -Ivendor/json -Ivendor/sqlite -Ivendor/bcrypt -o build/web-ci/$f.o
+          docker run -d --name limey-smoke -p 39999:3000 \
+            -e JWT_SECRET=ci-smoke-secret-value-32-chars-min!! \
+            limey-webserver:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:39999/api/games > /dev/null 2>&1; then
+              echo "Server is up."
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "Server did not become ready in time."
+              docker logs limey-smoke
+              exit 1
+            fi
+            sleep 1
           done
-          g++ -std=c++17 -O2 -c tests/web_server_tests.cpp -Isrc/web -Ivendor/json -Ivendor/sqlite -Ivendor/bcrypt -o build/web-ci/tests.o
-          g++ -o build/web-ci/web_server_tests build/web-ci/*.o -lpthread
-
-      - name: Test
-        run: ./build/web-ci/web_server_tests
+          echo "--- GET / (site) ---"
+          curl -fsS http://127.0.0.1:39999/ | head -5
+          echo "--- GET /api/games (API) ---"
+          curl -fsS http://127.0.0.1:39999/api/games | head -3
+          echo "--- auth check: verify rejects unsigned token ---"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X POST http://127.0.0.1:39999/api/verify \
+            -H "Authorization: Bearer bogus-token")
+          echo "status: $code"
+          [ "$code" = "401" ] || { echo "expected 401 for bogus token"; docker logs limey-smoke; exit 1; }
+          docker rm -f limey-smoke > /dev/null

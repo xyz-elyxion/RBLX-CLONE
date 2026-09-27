@@ -1,0 +1,20 @@
+.git
+.github
+build
+dist
+*.o
+*.obj
+*.exe
+
+# Local databases and generated worlds (the container uses its own /data volume)
+web/users.db
+web/users.db-journal
+web/users.db-shm
+web/users.db-wal
+web/game-worlds/
+web/test-game-worlds/
+
+# Not needed inside the web server image
+.vs
+.vscode
+node_modules

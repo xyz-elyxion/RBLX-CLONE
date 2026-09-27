@@ -44,6 +44,11 @@ int main(int argc, char** argv) {
     if (port > 0) config.port = port;
     if (!databasePath.empty()) config.databasePath = databasePath;
 
+    if (config.isProduction && config.jwtSecret.empty()) {
+        std::cerr << "Refusing to start: NODE_ENV=production requires a strong JWT_SECRET env var.\n";
+        return 1;
+    }
+
     web::WebApp app;
     g_app = &app;
 

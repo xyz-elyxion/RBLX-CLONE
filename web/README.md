@@ -17,6 +17,24 @@ cmake --build build/web --target WebServer
 
 It serves the site from `public/` and the API under `/api/`. Copy `.env.example` to `.env` for local overrides. Do not commit `.env`.
 
+## Docker
+
+A multi-stage `Dockerfile` at the repo root builds a production image: stage 1 compiles the server and runs its test suite (the image build fails if tests fail), stage 2 is a minimal Debian runtime with the site assets baked in.
+
+```bash
+docker build -t limey-webserver .
+docker run --rm -p 3000:3000 \
+  -e JWT_SECRET="replace-with-a-long-random-secret" \
+  -v limey-data:/data \
+  limey-webserver
+```
+
+- Listens on `0.0.0.0:3000` (override with `PORT`).
+- `NODE_ENV=production` is set in the image; the server refuses to start without `JWT_SECRET`.
+- State lives on the `/data` volume: `DATABASE_PATH=/data/users.db`, `GAME_WORLDS_DIR=/data/game-worlds` (both overridable).
+- Starter games seed on first boot from the baked-in `web/seed-worlds` and `ServerWorld.world`.
+- The container includes only the web backend — game-server instance spawning (`/api/games/:id/play`) assumes `Server.exe`/`Client.exe` exist on the host, so it is only meaningful when running the exes natively.
+
 ## Environment
 
 - `NODE_ENV` - `development`, `test`, or `production`.
