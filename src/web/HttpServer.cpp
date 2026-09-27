@@ -234,7 +234,7 @@ void HttpServer::stop() {
     stopRequested_ = true;
     if (listenSocket_ != 0) {
 #if defined(_WIN32)
-        ::closesocket(reinterpret_cast<socket_t>(listenSocket_));
+        ::closesocket(static_cast<socket_t>(listenSocket_));
         ::WSACleanup();
 #else
         ::shutdown(static_cast<socket_t>(listenSocket_), SHUT_RDWR);
