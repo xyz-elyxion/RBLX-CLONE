@@ -165,7 +165,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 Character* myCharacter = nullptr;
 
 int main() {
-    Window window(SCR_WIDTH, SCR_HEIGHT, "RBLX Clone Player");
+    Window window(SCR_WIDTH, SCR_HEIGHT, "Limey Player");
     glfwSetCursorPosCallback(window.getNativeWindow(), mouse_callback);
     
     // Lock cursor by default

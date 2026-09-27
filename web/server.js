@@ -584,7 +584,7 @@ async function seedStarterGame(db, config) {
     if (!ownerId) {
         const passwordHash = await bcrypt.hash('local-starter-account', config.bcryptRounds);
         const result = await dbRun(db, 'INSERT INTO users (username, password_hash) VALUES (?, ?)', [
-            'RBLXCreator',
+            'LimeyStarter',
             passwordHash
         ]);
         ownerId = result.lastID;
@@ -843,7 +843,7 @@ function buildClientLaunch(config, req, game, instance, token) {
         host: instance.host,
         port: instance.port,
         webServerUrl,
-        protocolUrl: `rblxclone://play?${params.toString()}`,
+        protocolUrl: `limey://play?${params.toString()}`,
         command: `"${clientPath}" ${args.map((arg) => `"${arg}"`).join(' ')}`,
         args
     };

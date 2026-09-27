@@ -486,8 +486,8 @@ bool startAuthCallback(std::string& loginUrl, std::string& error) {
 
 void sendAuthCallbackResponse(SOCKET socket, bool success) {
     const char* body = success
-        ? "<!doctype html><title>RBLX Player</title><h1>Signed in</h1><p>You can return to the player.</p>"
-        : "<!doctype html><title>RBLX Player</title><h1>Login failed</h1><p>Please return to the player and try again.</p>";
+        ? "<!doctype html><title>Limey Player</title><h1>Signed in</h1><p>You can return to the player.</p>"
+        : "<!doctype html><title>Limey Player</title><h1>Login failed</h1><p>Please return to the player and try again.</p>";
     std::ostringstream response;
     response << "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: "
              << std::strlen(body) << "\r\nConnection: close\r\n\r\n" << body;
@@ -763,7 +763,7 @@ void renderAuthMenu(float uiScale) {
     ImGui::SetNextWindowSize(ImVec2(panelWidth, panelHeight), ImGuiCond_Always);
 
     if (ImGui::Begin("PlayerAuth", nullptr, overlayFlags())) {
-        drawLabel("RBLX CLONE PLAYER");
+        drawLabel("LIMEY PLAYER");
         ImGui::TextUnformatted("Sign in through the website");
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + panelWidth - UiScale::Px(48.0f, uiScale));
         ImGui::TextWrapped("Sign in to continue with your account.");
@@ -1132,7 +1132,7 @@ int main(int argc, char** argv) {
         }
         fclose(f);
 
-        Window window(SCR_WIDTH, SCR_HEIGHT, "RBLX Clone Client");
+        Window window(SCR_WIDTH, SCR_HEIGHT, "Limey Client");
         std::cout << "Window Created." << std::endl;
         glfwSetCursorPosCallback(window.getNativeWindow(), mouse_callback);
         

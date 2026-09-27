@@ -1,4 +1,4 @@
-# RBLX Clone Web Backend
+# Limey Web Backend
 
 This is the local Express backend for account signup/login, token verification, and avatar storage.
 

@@ -434,7 +434,7 @@ int main(int argc, char** argv) {
 
     Network::setNonBlocking(serverSocket);
 
-    std::cout << "RBLX Clone Server started on port " << serverPort
+    std::cout << "Limey Server started on port " << serverPort
               << " using " << worldPath
               << " with web auth " << webServerUrl << std::endl;
 

@@ -65,7 +65,7 @@ public:
         delete[] wurl;
         
         // Initialize WinHTTP
-        HINTERNET hSession = WinHttpOpen(L"RBLX Client/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, 
+        HINTERNET hSession = WinHttpOpen(L"Limey Client/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, 
                                          WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
         if (!hSession) return "";
         
@@ -184,7 +184,7 @@ public:
         delete[] wurl;
         
         // Initialize WinHTTP
-        HINTERNET hSession = WinHttpOpen(L"RBLX Client/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, 
+        HINTERNET hSession = WinHttpOpen(L"Limey Client/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, 
                                          WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
         if (!hSession) return "";
         

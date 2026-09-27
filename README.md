@@ -1,6 +1,6 @@
-# RBLX Clone
+# Limey
 
-RBLX Clone is an early prototype of a Roblox-style client, game server, Studio editor, and web authentication/avatar service. It is usable for local experimentation, but it is not production-ready.
+Limey is an early prototype of a Roblox-style client, game server, Studio editor, and web authentication/avatar service. It is usable for local experimentation, but it is not production-ready.
 
 ## Current Status
 

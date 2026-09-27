@@ -230,7 +230,7 @@ namespace {
 
 int main() {
     try {
-        Window window(WINDOW_WIDTH, WINDOW_HEIGHT, "RBLX Clone Studio");
+        Window window(WINDOW_WIDTH, WINDOW_HEIGHT, "Limey Studio");
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
 
