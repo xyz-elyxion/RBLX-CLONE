@@ -10,6 +10,11 @@ WORKDIR /src
 COPY vendor/ vendor/
 COPY src/web/ src/web/
 COPY tests/ tests/
+# The test suite serves the real site and seeds starter games, so it needs
+# the same runtime assets the server ships with.
+COPY web/public web/public
+COPY web/seed-worlds web/seed-worlds
+COPY ServerWorld.world .
 
 # Same direct-compile recipe CI uses for the web stack (no GL/CMake needed).
 RUN set -eux; \
@@ -43,7 +48,7 @@ FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends wget \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 10001 limey \
+    && useradd --uid 10001 limey \
     && mkdir -p /data \
     && chown limey:limey /data
 
