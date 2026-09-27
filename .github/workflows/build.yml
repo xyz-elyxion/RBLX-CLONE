@@ -58,6 +58,26 @@ jobs:
       - name: Test
         run: ctest --test-dir ${{ runner.os == 'Windows' && 'build/windows-insiders' || 'build/linux' }} --output-on-failure -C Debug
 
+      - name: Collect game executables and assets
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/shaders | Out-Null
+          Copy-Item build/windows-insiders/Debug/Studio.exe dist/
+          Copy-Item build/windows-insiders/Debug/Client.exe dist/
+          Copy-Item build/windows-insiders/Debug/Server.exe dist/
+          Copy-Item shaders/*.glsl dist/shaders/
+          Copy-Item face*.png dist/
+          Copy-Item ServerWorld.world dist/
+          Get-ChildItem dist -Recurse | Select-Object FullName, Length
+
+      - name: Upload game executables
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBLXClone-windows-x64
+          path: dist/
+          if-no-files-found: error
+
   web-tests:
     name: Web backend tests
     runs-on: ubuntu-latest
