@@ -38,9 +38,9 @@ jobs:
             libwayland-dev \
             libxkbcommon-dev
 
-      - name: Configure (Windows preset)
+      - name: Configure Windows (VS 2026 preset matches the runner image)
         if: runner.os == 'Windows'
-        run: cmake --preset windows-debug
+        run: cmake --preset windows-insiders
 
       - name: Configure Linux (Studio + tests; Client/Server are Windows-only)
         if: runner.os == 'Linux'
@@ -53,10 +53,10 @@ jobs:
           -DRBLX_BUILD_TESTS=ON
 
       - name: Build
-        run: cmake --build ${{ runner.os == 'Windows' && 'build/windows-debug' || 'build/linux' }} --parallel
+        run: cmake --build ${{ runner.os == 'Windows' && 'build/windows-insiders' || 'build/linux' }} --parallel
 
       - name: Test
-        run: ctest --test-dir ${{ runner.os == 'Windows' && 'build/windows-debug' || 'build/linux' }} --output-on-failure -C Debug
+        run: ctest --test-dir ${{ runner.os == 'Windows' && 'build/windows-insiders' || 'build/linux' }} --output-on-failure -C Debug
 
   web-tests:
     name: Web backend tests
